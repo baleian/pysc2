@@ -7,7 +7,7 @@ from pysc2.env import run_loop
 from pysc2.env import sc2_env
 
 
-flags.DEFINE_string('agent', 'agents.test_agent.TestAgent',
+flags.DEFINE_string('agent', 'agents.test_agent2.TestAgent',
                     'Which agent to run, as a python path to an Agent class.')
 
 FLAGS = flags.FLAGS

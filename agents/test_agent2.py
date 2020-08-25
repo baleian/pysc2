@@ -51,17 +51,11 @@ class AtariNet(tf.keras.Model):
         self.available_arguments = available_arguments
 
         self.screen_feature_preprocessing_layer = SpatialFeaturePreProcessingLayer(sc2_features.SCREEN_FEATURES)
-        self.minimap_feature_preprocessing_layer = SpatialFeaturePreProcessingLayer(sc2_features.MINIMAP_FEATURES)
-        self.player_feature_preprocessing_layer = NonSpatialFeaturePreProcessingLayer()
 
         self.screen_feature_conv1 = layers.Conv2D(filters=16, kernel_size=(8, 8), strides=(4, 4), padding='same')
         self.screen_feature_conv2 = layers.Conv2D(filters=32, kernel_size=(4, 4), strides=(2, 2), padding='same')
-        self.minimap_feature_conv1 = layers.Conv2D(filters=16, kernel_size=(8, 8), strides=(4, 4), padding='same')
-        self.minimap_feature_conv2 = layers.Conv2D(filters=32, kernel_size=(4, 4), strides=(2, 2), padding='same')
-        self.player_feature_dense = layers.Dense(64, activation='tanh')
 
         self.flatten_layer = layers.Flatten()
-        self.concat_layer = layers.Concatenate(axis=1)
         self.state_representation = layers.Dense(256, activation='relu')
 
         self.value = layers.Dense(1)
@@ -74,23 +68,14 @@ class AtariNet(tf.keras.Model):
             else:
                 self.argument_policy[arg_type.name] = layers.Dense(arg_type.sizes[0], activation='softmax', name=arg_type.name)
 
-    def call(self, screen_feature, minimap_feature, player_feature):
+    def call(self, screen_feature):
         screen_feature = self.screen_feature_preprocessing_layer(screen_feature)
-        minimap_feature = self.minimap_feature_preprocessing_layer(minimap_feature)
-        player_feature = self.player_feature_preprocessing_layer(player_feature)
 
         screen_feature = self.screen_feature_conv1(screen_feature)
         screen_feature = self.screen_feature_conv2(screen_feature)
-        minimap_feature = self.minimap_feature_conv1(minimap_feature)
-        minimap_feature = self.minimap_feature_conv2(minimap_feature)
-        player_feature = self.player_feature_dense(player_feature)
 
         screen_feature = self.flatten_layer(screen_feature)
-        minimap_feature = self.flatten_layer(minimap_feature)
-        player_feature = self.flatten_layer(player_feature)
-
-        concat = self.concat_layer([screen_feature, minimap_feature, player_feature])
-        state = self.state_representation(concat)
+        state = self.state_representation(screen_feature)
 
         value = self.value(state)
         action_policy = self.action_policy(state)
@@ -154,13 +139,11 @@ class TestAgent(object):
 
     def get_state(self, obs):
         screen_feature = obs.observation.feature_screen
-        minimap_feature = obs.observation.feature_minimap
-        player_feature = obs.observation.player
-        return screen_feature, minimap_feature, player_feature
+        return screen_feature
 
     def predict(self, state):
-        screen_feature, minimap_feature, player_feature = state
-        return self.model(np.array([screen_feature]), np.array([minimap_feature]), np.array([player_feature]))
+        screen_feature = state
+        return self.model(np.array([screen_feature]))
 
     def get_action(self, obs, state):
         value, action_policy, argument_policy = self.predict(state)
@@ -186,7 +169,7 @@ class TestAgent(object):
         return action_id, args
 
     def store(self, state, action, reward):
-        screen_feature, minimap_feature, player_feature = state
+        screen_feature = state
         action_id, args = action
         action_one_hot = np.zeros(len(self.available_actions), dtype='float32')
         action_one_hot[action_id] = 1.
@@ -206,7 +189,7 @@ class TestAgent(object):
             else:
                 argument_one_hot[arg_type.name] = np.zeros_like(argument_one_hot[arg_type.name])
                 argument_one_hot[arg_type.name][argument] = 1
-        self.memory.append((screen_feature, minimap_feature, player_feature, action_one_hot, argument_one_hot, reward))
+        self.memory.append((screen_feature, action_one_hot, argument_one_hot, reward))
 
     def calculate_G(self, rewards, next_state):
         G = np.zeros_like(rewards, dtype='float32')
@@ -224,17 +207,15 @@ class TestAgent(object):
         self.store(state, action, reward)
         if done or (self.step_size and (len(self.memory) >= self.step_size)):
             screen_features = np.array([item[0] for item in self.memory])
-            minimap_features = np.array([item[1] for item in self.memory])
-            player_features = np.array([item[2] for item in self.memory])
-            action_one_hots = np.array([item[3] for item in self.memory])
+            action_one_hots = np.array([item[1] for item in self.memory])
             argument_one_hots = dict()
             for arg_type in self.available_arguments:
                 if arg_type.name in ['screen', 'minimap', 'screen2']:
-                    argument_one_hots[arg_type.name + 'x'] = np.array([item[4][arg_type.name + 'x'] for item in self.memory])
-                    argument_one_hots[arg_type.name + 'y'] = np.array([item[4][arg_type.name + 'y'] for item in self.memory])
+                    argument_one_hots[arg_type.name + 'x'] = np.array([item[2][arg_type.name + 'x'] for item in self.memory])
+                    argument_one_hots[arg_type.name + 'y'] = np.array([item[2][arg_type.name + 'y'] for item in self.memory])
                 else:
-                    argument_one_hots[arg_type.name] = np.array([item[4][arg_type.name] for item in self.memory])
-            rewards = np.array([item[5] for item in self.memory])
+                    argument_one_hots[arg_type.name] = np.array([item[2][arg_type.name] for item in self.memory])
+            rewards = np.array([item[3] for item in self.memory])
             targets = self.calculate_G(rewards, None if done else next_state)
             self.memory = []
         else:
@@ -242,7 +223,7 @@ class TestAgent(object):
 
         model_params = self.model.trainable_variables
         with tf.GradientTape() as tape:
-            values, action_policy, argument_policy = self.model(screen_features, minimap_features, player_features)
+            values, action_policy, argument_policy = self.model(screen_features)
             action_probs = tf.reduce_sum(action_one_hots * action_policy, axis=1, keepdims=True)
             argument_probs = 1.
             for arg_name in argument_one_hots:
