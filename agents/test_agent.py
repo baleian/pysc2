@@ -6,6 +6,7 @@ import tensorflow.keras.optimizers as optimizers
 from pysc2.lib import actions as sc2_actions
 from pysc2.lib import features as sc2_features
 from pysc2.env import environment as sc2_env
+from pysc2.env.sc2_env import SC2Env
 
 
 FUNCTIONS = sc2_actions.FUNCTIONS

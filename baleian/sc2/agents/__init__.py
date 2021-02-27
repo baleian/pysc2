@@ -1,1 +1,2 @@
-from .move_to_beacon import *
+from .move_to_beacon import MoveToBeaconSimpleAgent
+from .move_to_beacon import MoveToBeaconDQNAgent

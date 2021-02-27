@@ -7,7 +7,7 @@ from pysc2.env import run_loop
 from pysc2.env import sc2_env
 
 
-flags.DEFINE_string('agent', 'agents.test_agent2.TestAgent',
+flags.DEFINE_string('agent', 'agents.a2c_agent2.A2CAgent',
                     'Which agent to run, as a python path to an Agent class.')
 
 FLAGS = flags.FLAGS
@@ -25,7 +25,7 @@ def main(unused_argv):
             map_name='CollectMineralShards',
             players=[sc2_env.Agent(sc2_env.Race['terran'])],
             agent_interface_format=sc2_env.AgentInterfaceFormat(
-                feature_dimensions=sc2_env.Dimensions(screen=84, minimap=64),
+                feature_dimensions=sc2_env.Dimensions(screen=64, minimap=64),
             ),
             visualize=True,
             realtime=False,

@@ -4,7 +4,7 @@ from setuptools import setup
 setup(
     name="baleian-sc2",
     packages=[
-        'baleian.sc2',
+        "baleian.sc2",
     ],
     version="0.0.1",
     description="A StarCraft II AI",
@@ -14,9 +14,9 @@ setup(
     url="https://github.com/baleian/python-sc2",
     keywords=["StarCraft", "StarCraft 2", "StarCraft II", "AI", "Bot"],
     install_requires=[
-        'pysc2',
-        'numpy',
-        'absl'
+        "pysc2",
+        "numpy",
+        "absl"
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",

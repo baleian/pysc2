@@ -4,16 +4,13 @@ from absl import app
 from absl import flags
 
 from pysc2.env import run_loop
-from pysc2.env import sc2_env
-
-sc2_env.SC2Env
 
 flags.DEFINE_string('env', None, 'Environment to use.')
-flags.DEFINE_string('agent', 'pysc2.agents.random_agent.RandomAgent',
-                    'Which agent to run, as a python path to an Agent class.')
-flags.DEFINE_string('model_dir', None, 'Directory path where the model to be used by the agent is stored.')
+flags.DEFINE_string('agent', None, 'Which agent to train, as a python path to an Agent class.')
+flags.DEFINE_string('model_dir', None, 'Directory path where the model will be saved.')
 
 flags.mark_flag_as_required('env')
+flags.mark_flag_as_required('agent')
 
 FLAGS = flags.FLAGS
 
@@ -27,11 +24,14 @@ def main(unused_argv):
     env_cls = _get_cls(FLAGS.env)
     agent_cls = _get_cls(FLAGS.agent)
 
-    with env_cls(
+    env = env_cls(
         visualize=True,
-        realtime=False,
-    ) as env:
-        run_loop.run_loop([agent_cls()], env)
+        realtime=True,
+    )
+
+    run_loop.run_loop([agent_cls()], env)
+
+    env.close()
 
 
 def entry_point():  # Needed so setup.py scripts work.
